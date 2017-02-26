@@ -43,3 +43,39 @@ void (*Mouse::feed)(char, char, short, short, short, short);
 void (*Keyboard::Keyboard_feedText)(const std::string&, bool, unsigned char);
 std::vector<KeyboardAction>* Keyboard::inputs;
 int* Keyboard::states;
+
+#include "Whitelist.h"
+
+void (*WhitelistFile::WhitelistFile_construct)(WhitelistFile*, std::string const&);
+
+#include "OpsList.h"
+
+void (*OpsFile::OpsFile_construct)(OpsFile*, std::string const&);
+
+#include "LevelSettings.h"
+
+void (*LevelSettings::LevelSettings_construct)(LevelSettings*);
+
+#include "MinecraftEventing.h"
+
+void (*MinecraftEventing::MinecraftEventing_construct)(MinecraftEventing*, std::string const&);
+
+#include "ResourcePack.h"
+
+void (*PackManifestFactory::PackManifestFactory_construct)(PackManifestFactory*, MinecraftEventing&);
+void (*ResourcePackRepository::ResourcePackRepository_construct)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&);
+void (*ResourcePackManager::ResourcePackManager_construct)(ResourcePackManager*, std::string const&);
+
+#include "Minecraft.h"
+
+Level* (*Minecraft::Minecraft_getLevel)(Minecraft*);
+
+#include "UUID.h"
+
+mce::UUID* mce::UUID::EMPTY;
+mce::UUID (*mce::UUID::fromString)(std::string const&);
+
+#include "ServerInstance.h"
+
+void (*ServerInstance::ServerInstance_construct)(ServerInstance*, Whitelist const&, OpsList const&, std::string const&, std::chrono::duration<long long>, std::string, std::string, LevelSettings, minecraft::api::Api&, int, int, int, int, bool, std::vector<std::string> const&, std::string, bool, mce::UUID const&, MinecraftEventing&, ResourcePackRepository&, ResourcePackManager&, ResourcePackManager*);
+void (*ServerInstance::ServerInstance_update)(ServerInstance*);
