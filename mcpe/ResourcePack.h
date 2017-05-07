@@ -1,9 +1,12 @@
 #pragma once
 
 #include <string>
+#include <functional>
 class MinecraftEventing;
+class FilePathManager;
 
 class PackManifestFactory {
+
 public:
 
     char filler[4];
@@ -22,10 +25,10 @@ public:
 
     char filler[0x68];
 
-    static void (*ResourcePackRepository_construct)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&);
+    static void (*ResourcePackRepository_construct)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&, FilePathManager*);
 
-    ResourcePackRepository(MinecraftEventing& ev, PackManifestFactory& fact) {
-        ResourcePackRepository_construct(this, ev, fact);
+    ResourcePackRepository(MinecraftEventing& ev, PackManifestFactory& fact, FilePathManager* pm) {
+        ResourcePackRepository_construct(this, ev, fact, pm);
     }
 
 };
@@ -36,10 +39,10 @@ public:
 
     char filler[0x48];
 
-    static void (*ResourcePackManager_construct)(ResourcePackManager*, std::string const&);
+    static void (*ResourcePackManager_construct)(ResourcePackManager*, std::function<std::string ()> const&);
 
-    ResourcePackManager(std::string const& str) {
-        ResourcePackManager_construct(this, str);
+    ResourcePackManager(std::function<std::string ()> const& f) {
+        ResourcePackManager_construct(this, f);
     }
 
 };

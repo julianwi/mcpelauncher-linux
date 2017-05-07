@@ -13,11 +13,13 @@
 #include "../mcpe/Whitelist.h"
 #include "../mcpe/OpsList.h"
 #include "../mcpe/ResourcePack.h"
+#include "../mcpe/FilePathManager.h"
 #include "../mcpe/Minecraft.h"
 #include "../mcpe/MinecraftEventing.h"
 #include "../mcpe/UUID.h"
 #include "../mcpe/LevelSettings.h"
 #include "../mcpe/ServerInstance.h"
+#include "DedicatedServerMinecraftApp.h"
 
 extern "C" {
 #include "../hybris/include/hybris/dlfcn.h"
@@ -33,7 +35,7 @@ void patchNotesModelStub() {
 }
 
 int main(int argc, char *argv[]) {
-    registerCrashHandler();
+    //registerCrashHandler();
 
     std::cout << "loading hybris libraries\n";
     stubSymbols(android_symbols, (void*) stubFunc);
@@ -73,15 +75,14 @@ int main(int argc, char *argv[]) {
     AppPlatform::AppPlatform_initialize = (void (*)(AppPlatform*)) hybris_dlsym(handle, "_ZN11AppPlatform10initializeEv");
     AppPlatform::AppPlatform__fireAppFocusGained = (void (*)(AppPlatform*)) hybris_dlsym(handle, "_ZN11AppPlatform19_fireAppFocusGainedEv");
 
-    WhitelistFile::WhitelistFile_construct = (void (*)(WhitelistFile*, std::string const&)) hybris_dlsym(handle, "_ZN13WhitelistFileC2ERKSs");
-    OpsFile::OpsFile_construct = (void (*)(OpsFile*, std::string const&)) hybris_dlsym(handle, "_ZN7OpsFileC2ERKSs");
     LevelSettings::LevelSettings_construct = (void (*)(LevelSettings*)) hybris_dlsym(handle, "_ZN13LevelSettingsC2Ev");
     MinecraftEventing::MinecraftEventing_construct = (void (*)(MinecraftEventing*, std::string const&)) hybris_dlsym(handle, "_ZN17MinecraftEventingC2ERKSs");
     Minecraft::Minecraft_getLevel = (Level* (*)(Minecraft*)) hybris_dlsym(handle, "_ZN9Minecraft8getLevelEv");
     PackManifestFactory::PackManifestFactory_construct = (void (*)(PackManifestFactory*, MinecraftEventing&)) hybris_dlsym(handle, "_ZN19PackManifestFactoryC2ER17MinecraftEventing");
-    ResourcePackManager::ResourcePackManager_construct = (void (*)(ResourcePackManager*, std::string const&)) hybris_dlsym(handle, "_ZN19ResourcePackManagerC2ERKSs");
-    ResourcePackRepository::ResourcePackRepository_construct = (void (*)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&)) hybris_dlsym(handle, "_ZN22ResourcePackRepositoryC2ER17MinecraftEventingR19PackManifestFactory");
-    ((void*&) ServerInstance::ServerInstance_construct) = hybris_dlsym(handle, "_ZN14ServerInstanceC2ERK9WhitelistRK7OpsListRKSsNSt6chrono8durationIxSt5ratioILx1ELx1EEEESsSs13LevelSettingsRN9minecraft3api3ApiEiiiibRKSt6vectorISsSaISsEESsbRKN3mce4UUIDER17MinecraftEventingR22ResourcePackRepositoryR19ResourcePackManagerPSV_");
+    ResourcePackManager::ResourcePackManager_construct = (void (*)(ResourcePackManager*, std::function<std::string ()> const&)) hybris_dlsym(handle, "_ZN19ResourcePackManagerC2ESt8functionIFSsvEE");
+    ResourcePackRepository::ResourcePackRepository_construct = (void (*)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&, FilePathManager*)) hybris_dlsym(handle, "_ZN22ResourcePackRepositoryC2ER17MinecraftEventingR19PackManifestFactoryP15FilePathManager");
+    FilePathManager::FilePathManager_construct = (void (*)(FilePathManager*, std::string, bool)) hybris_dlsym(handle, "_ZN15FilePathManagerC2ESsb");
+    ((void*&) ServerInstance::ServerInstance_construct) = hybris_dlsym(handle, "_ZN14ServerInstanceC2ER13IMinecraftAppRK9WhitelistRK7OpsListP15FilePathManagerNSt6chrono8durationIxSt5ratioILx1ELx1EEEESsSsSsSsSs13LevelSettingsRN9minecraft3api3ApiEibiiibRKSt6vectorISsSaISsEESsbRKN3mce4UUIDER17MinecraftEventingR22ResourcePackRepositoryR19ResourcePackManagerPSX_");
     ServerInstance::ServerInstance_update = (void (*)(ServerInstance*)) hybris_dlsym(handle, "_ZN14ServerInstance6updateEv");
     mce::UUID::EMPTY = (mce::UUID*) hybris_dlsym(handle, "_ZN3mce4UUID5EMPTYE");
     mce::UUID::fromString = (mce::UUID (*)(std::string const&)) hybris_dlsym(handle, "_ZN3mce4UUID10fromStringERKSs");
@@ -95,8 +96,8 @@ int main(int argc, char *argv[]) {
     std::cout << "app platform initialized\n";
 
     std::cout << "load white-list and ops-list\n";
-    WhitelistFile whitelist ("whitelist.txt");
-    OpsFile ops ("ops.txt");
+    Whitelist whitelist;
+    OpsList ops;
     std::cout << "create minecraft api class\n";
     minecraft::api::Api api;
     api.vtable = hybris_dlsym(handle, "_ZTVN9minecraft3api3Api");
@@ -120,17 +121,23 @@ int main(int argc, char *argv[]) {
     levelSettings.commandsEnabled = true;
     levelSettings.texturepacksRequired = false;
 
+    std::cout << "create file path manager\n";
+    FilePathManager pathmgr ("./", false);
+
     std::cout << "create minecraft eventing\n";
     MinecraftEventing eventing (getCWD());
     std::cout << "create resource pack manager\n";
-    ResourcePackManager resourcePackManager (getCWD());
+    ResourcePackManager resourcePackManager ([]() {
+        return getCWD();
+    });
     std::cout << "create pack manifest factory\n";
     PackManifestFactory packManifestFactory (eventing);
     std::cout << "create resource pack repository\n";
-    ResourcePackRepository resourcePackRepo (eventing, packManifestFactory);
+    ResourcePackRepository resourcePackRepo (eventing, packManifestFactory, &pathmgr);
     std::cout << "create server instance\n";
+    DedicatedServerMinecraftApp minecraftApp;
     ServerInstance instance;
-    ServerInstance::ServerInstance_construct(&instance, whitelist.list, ops.list, "data/user/minecraftWorlds/", std::chrono::duration<long long>(0), /* world dir */ "Og0AABoNAAA=", /* world name */ "My World", /* settings */ levelSettings, api, 22, /* (query?) port */ 12345, /* (maybe not) port */ 12346, /* max player count */ 5, /* requiresXboxLive */ false, {}, "normal", /* preload world? */ false, *mce::UUID::EMPTY, eventing, resourcePackRepo, resourcePackManager, nullptr);
+    ServerInstance::ServerInstance_construct(&instance, minecraftApp, whitelist, ops, &pathmgr, std::chrono::duration<long long>(0), /* world dir */ "Og0AABoNAAA=", /* world name */ "My World", "unknown", "unknown", "unknown", /* settings */ levelSettings, api, 22, true, /* (query?) port */ 12345, /* (maybe not) port */ 12346, /* max player count */ 5, /* requiresXboxLive */ false, {}, "normal", /* preload world? */ false, *mce::UUID::EMPTY, eventing, resourcePackRepo, resourcePackManager, nullptr);
     std::cout << "initialized lib\n";;
     while (true) {
         ServerInstance::ServerInstance_update(&instance);

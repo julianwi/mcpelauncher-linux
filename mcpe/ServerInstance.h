@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 
+class IMinecraftApp;
 class Minecraft;
 class Whitelist;
 class OpsList;
@@ -22,7 +23,7 @@ public:
     Minecraft* minecraft;
     char filler2[0x200];
 
-    static void (*ServerInstance_construct)(ServerInstance*, Whitelist const&, OpsList const&, std::string const&, std::chrono::duration<long long>, std::string, std::string, LevelSettings, minecraft::api::Api&, int, int, int, int, bool, std::vector<std::string> const&, std::string, bool, mce::UUID const&, MinecraftEventing&, ResourcePackRepository&, ResourcePackManager&, ResourcePackManager*);
+    static void (*ServerInstance_construct)(ServerInstance*, IMinecraftApp&, Whitelist const&, OpsList const&, FilePathManager*, std::chrono::duration<long long>, std::string, std::string, std::string, std::string, std::string, LevelSettings, minecraft::api::Api&, int, bool, int, int, int, bool, std::vector<std::string> const&, std::string, bool, mce::UUID const&, MinecraftEventing&, ResourcePackRepository&, ResourcePackManager&, ResourcePackManager*);
     static void (*ServerInstance_update)(ServerInstance*);
 
     void update() {

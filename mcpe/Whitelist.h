@@ -2,21 +2,10 @@
 
 struct Whitelist {
 
-    char filler[0xc];
+    struct Entry {
+        char filler[0x20];
+    };
 
-};
-
-class WhitelistFile {
-
-public:
-
-    static void (*WhitelistFile_construct)(WhitelistFile*, std::string const&);
-
-    std::string str;
-    Whitelist list;
-
-    WhitelistFile(std::string const& str) {
-        WhitelistFile_construct(this, str);
-    }
+    std::vector<Entry> entries;
 
 };

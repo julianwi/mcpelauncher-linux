@@ -44,14 +44,6 @@ void (*Keyboard::Keyboard_feedText)(const std::string&, bool, unsigned char);
 std::vector<KeyboardAction>* Keyboard::inputs;
 int* Keyboard::states;
 
-#include "Whitelist.h"
-
-void (*WhitelistFile::WhitelistFile_construct)(WhitelistFile*, std::string const&);
-
-#include "OpsList.h"
-
-void (*OpsFile::OpsFile_construct)(OpsFile*, std::string const&);
-
 #include "LevelSettings.h"
 
 void (*LevelSettings::LevelSettings_construct)(LevelSettings*);
@@ -63,8 +55,12 @@ void (*MinecraftEventing::MinecraftEventing_construct)(MinecraftEventing*, std::
 #include "ResourcePack.h"
 
 void (*PackManifestFactory::PackManifestFactory_construct)(PackManifestFactory*, MinecraftEventing&);
-void (*ResourcePackRepository::ResourcePackRepository_construct)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&);
-void (*ResourcePackManager::ResourcePackManager_construct)(ResourcePackManager*, std::string const&);
+void (*ResourcePackRepository::ResourcePackRepository_construct)(ResourcePackRepository*, MinecraftEventing&, PackManifestFactory&, FilePathManager*);
+void (*ResourcePackManager::ResourcePackManager_construct)(ResourcePackManager*, std::function<std::string ()> const&);
+
+#include "FilePathManager.h"
+
+void (*FilePathManager::FilePathManager_construct)(FilePathManager*, std::string, bool);
 
 #include "Minecraft.h"
 
@@ -77,5 +73,5 @@ mce::UUID (*mce::UUID::fromString)(std::string const&);
 
 #include "ServerInstance.h"
 
-void (*ServerInstance::ServerInstance_construct)(ServerInstance*, Whitelist const&, OpsList const&, std::string const&, std::chrono::duration<long long>, std::string, std::string, LevelSettings, minecraft::api::Api&, int, int, int, int, bool, std::vector<std::string> const&, std::string, bool, mce::UUID const&, MinecraftEventing&, ResourcePackRepository&, ResourcePackManager&, ResourcePackManager*);
+void (*ServerInstance::ServerInstance_construct)(ServerInstance*, IMinecraftApp&, Whitelist const&, OpsList const&, FilePathManager*, std::chrono::duration<long long>, std::string, std::string, std::string, std::string, std::string, LevelSettings, minecraft::api::Api&, int, bool, int, int, int, bool, std::vector<std::string> const&, std::string, bool, mce::UUID const&, MinecraftEventing&, ResourcePackRepository&, ResourcePackManager&, ResourcePackManager*);
 void (*ServerInstance::ServerInstance_update)(ServerInstance*);
