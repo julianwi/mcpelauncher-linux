@@ -45,6 +45,24 @@ void stubFunc() {
     Log::warn("Launcher", "Stubbed function call");
 }
 
+static void* (*ServerPlayer_sendNetworkPacket)(void* player, void* pack);
+static void* (*TextPacket_construct)(void* packet, int type, mcpe::string const&, mcpe::string const&, std::vector<mcpe::string> const&, bool, mcpe::string const&);
+static mcpe::string* (*Entity_getNameTag)(void* entity);
+
+void handlePlayerJoinedEvent(void* obj, void* player) {
+    const char* name = Entity_getNameTag(player)->c_str();
+    Log::trace("Join", "%s joined the game", name);
+    char packet[0x4c-0x1c];
+    mcpe::string greeting = std::string("Hello ") + std::string(name) + std::string(", welcome on this server\nRules: §3Griefing not allowed");
+    TextPacket_construct(packet, 6, std::string(""), greeting, std::vector<mcpe::string>(0), false, std::string(""));
+    ServerPlayer_sendNetworkPacket(player, packet);
+}
+
+void handlePlayerLeftEvent(void* obj, void* player) {
+    const char* name = Entity_getNameTag(player)->c_str();
+    Log::trace("Left", "%s left the game", name);
+}
+
 int main(int argc, char *argv[]) {
     registerCrashHandler();
 
@@ -68,6 +86,8 @@ int main(int argc, char *argv[]) {
     hybris_hook("eglGetProcAddress", (void*) stubFunc);
     void* libmLib = loadLibraryOS("libm.so.6", libm_symbols);
     hookAndroidLog();
+    hybris_hook("_ZNK9minecraft3api15PlayerInterface23handlePlayerJoinedEventER6Player", (void*) handlePlayerJoinedEvent);
+    hybris_hook("_ZNK9minecraft3api15PlayerInterface21handlePlayerLeftEventER6Player", (void*) handlePlayerLeftEvent);
     if (!load_empty_library("libc.so") || !load_empty_library("libm.so"))
         return -1;
     // load stub libraries
@@ -81,6 +101,10 @@ int main(int argc, char *argv[]) {
         Log::error("Launcher", "Failed to load Minecraft: %s", hybris_dlerror());
         return -1;
     }
+
+    ServerPlayer_sendNetworkPacket = (void* (*)(void* obj, void* packet)) hybris_dlsym(handle, "_ZNK12ServerPlayer17sendNetworkPacketER6Packet");
+    TextPacket_construct = (void* (*)(void* obj, int type, mcpe::string const&, mcpe::string const&, std::vector<mcpe::string> const&, bool, mcpe::string const&)) hybris_dlsym(handle, "_ZN10TextPacketC2E14TextPacketTypeRKSsS2_RKSt6vectorISsSaISsEEbS2_");
+    Entity_getNameTag = (mcpe::string* (*)(void*obj)) hybris_dlsym(handle, "_ZNK6Entity10getNameTagEv");
 
     unsigned int libBase = ((soinfo*) handle)->base;
     Log::info("Launcher", "Loaded Minecraft library");
